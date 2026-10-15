@@ -813,6 +813,39 @@ Pour \texttt{sshd} de la cible, la connexion vient de \texttt{10.99.0.10} : le b
 C'est le modèle classique de journalisation d'un bastion (le bastion doit conserver ses
 propres journaux pour rattacher « qui, depuis l'extérieur » à « quelle connexion interne »).
 \end{solution}
+\question Le TP montre comment se connecter à la cible en passant par le bastion avec
+\texttt{ssh -J bastion cible}. On va donc essayer le transfert de fichiers par ce rebond.
+Comment copier un fichier vers la cible en passant par le bastion ?
+\begin{solution}
+\begin{bashcode}
+test@debian-13:~$ echo "test envoie passant par bastion" > testnathanael1.txt
+test@debian-13:~$ scp testnathanael1.txt cible:/tmp/
+testnathanael1.txt                      100%   32    69.3KB/s   00:00
+test@debian-13:~$ scp -J bastion testnathanael1.txt cible:/tmp/
+testnathanael1.txt                      100%   32    87.4KB/s   00:00
+test@debian-13:~$ ssh cible 'ls -l /tmp/testnathanael1.txt'
+-rw-r--r-- 1 nathanael nathanael 32 14 oct. 12:50 /tmp/testnathanael1.txt
+\end{bashcode}
+\texttt{scp} accepte l'option \texttt{-J} comme \texttt{ssh}, donc le fichier passe par le
+bastion et la clé privée ne passe pas par le bastion. C'est une manipulation qu'un admin
+peut avoir l'habitude de faire (envoyer un script, récupérer des logs), et le TP ne le
+montre pas.
+\end{solution}
+\question Une copie de fichier vers l'alias \texttt{cible} fonctionne, mais la même copie
+vers l'adresse IP de la machine interne échoue. Comment l'expliquer, et quand faut-il
+préciser le \texttt{-J} ?
+\begin{solution}
+\begin{bashcode}
+test@debian-13:~$ scp testnathanael1.txt nathanael@10.99.0.11:/tmp/
+ssh: connect to host 10.99.0.11 port 22: Connection timed out
+scp: Connection closed
+\end{bashcode}
+La différence vient du fichier \texttt{\textasciitilde/.ssh/config}. L'alias \texttt{cible}
+a un \texttt{ProxyJump bastion}, donc \texttt{scp} passe par le bastion et ça marche. Avec
+l'IP, ce réglage n'existe pas, donc \texttt{scp} essaie d'aller direct sur la machine qui
+n'est pas joignable, et ça échoue. En résumé, c'est la configuration (ou l'option
+\texttt{-J}) qui fait le rebond, pas \texttt{scp}.
+\end{solution}
 \end{questions}
 
 \section{Tunnels : du forwarding à la demande}
